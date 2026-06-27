@@ -4,7 +4,6 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   FaCalendar,
-  FaCoins,
   FaTint,
   FaMoneyBillWave,
   FaReceipt,
@@ -29,7 +28,6 @@ const DailySales = () => {
         const response = await API.get('/transactions');
         console.log('📊 Transactions response:', response.data);
 
-        // Vérifier que response.data est bien un tableau
         if (Array.isArray(response.data)) {
           setAllVentes(response.data);
         } else {
@@ -48,21 +46,19 @@ const DailySales = () => {
     fetchTransactions();
     const interval = setInterval(fetchTransactions, 30000);
 
-    // Nettoyer l'intervalle quand le composant est démonté
     return () => clearInterval(interval);
   }, []);
 
-  // Filtrage par date (sécurité : allVentes doit être un tableau)
+  // Filtrage par date
   const ventesFiltrees = Array.isArray(allVentes)
     ? allVentes.filter(v => v.date === selectedDate)
     : [];
 
-  // Calcul des statistiques à partir du volume uniquement
+  // Calcul des statistiques à partir du volume uniquement (plus de pieces)
   const totalLitres = ventesFiltrees.reduce(
     (acc, sale) => acc + (sale.volume ?? 0),
     0
   );
-  const totalPieces = totalLitres;          // 1 pièce = 1 litre
   const totalVentes = totalLitres * 50;     // 1 litre = 50 FCFA
   const nbTransactions = ventesFiltrees.length;
   const moyenne = nbTransactions > 0
@@ -127,7 +123,7 @@ const DailySales = () => {
         </div>
       </div>
 
-      {/* Cartes résumé */}
+      {/* Cartes résumé - Pièces de 50F supprimée */}
       <div className="summary-grid">
         <div className="summary-card">
           <div className="summary-icon blue"><FaReceipt /></div>
@@ -136,13 +132,7 @@ const DailySales = () => {
             <p className="summary-value">{nbTransactions}</p>
           </div>
         </div>
-        <div className="summary-card">
-          <div className="summary-icon green"><FaCoins /></div>
-          <div>
-            <p className="summary-label">Pièces de 50F</p>
-            <p className="summary-value">{totalPieces}</p>
-          </div>
-        </div>
+        {/* Carte Pièces supprimée */}
         <div className="summary-card">
           <div className="summary-icon orange"><FaTint /></div>
           <div>
@@ -185,19 +175,16 @@ const DailySales = () => {
                 <thead>
                   <tr>
                     <th>Volume distribué</th>
-                    <th>Pièces (50F)</th>
                     <th>Montant</th>
                   </tr>
                 </thead>
                 <tbody>
                   {currentSales.map((sale) => {
                     const volume = sale.volume ?? 0;
-                    const pieces = volume;
                     const montant = volume * 50;
                     return (
                       <tr key={sale._id || sale.id}>
                         <td>{volume} L</td>
-                        <td>{pieces}</td>
                         <td className="montant-cell">{montant.toLocaleString()} F</td>
                       </tr>
                     );

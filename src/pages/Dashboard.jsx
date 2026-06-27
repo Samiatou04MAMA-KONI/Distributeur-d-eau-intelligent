@@ -24,7 +24,6 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 const Dashboard = () => {
   const [todayStats, setTodayStats] = useState({
     totalLitres: 0,
-    totalPieces: 0,
     totalVentes: 0,
     totalTransactions: 0,
   });
@@ -41,17 +40,12 @@ const Dashboard = () => {
         const data = response.data || {};
 
         // Récupération des valeurs brutes (volume et nombre de transactions)
-        // On accepte indifféremment les champs 'totalLitres' ou 'volume', et 'totalTransactions' ou 'transactions'
         const totalLitres = data.today?.totalLitres ?? data.today?.volume ?? 0;
         const totalTransactions = data.today?.totalTransactions ?? data.today?.transactions ?? 0;
-
-        // Calcul des indicateurs dérivés
-        const totalPieces = totalLitres;          // 1 pièce = 1 litre
-        const totalVentes = totalLitres * 50;     // 1 litre = 50 FCFA
+        const totalVentes = totalLitres * 50; // 1 litre = 50 FCFA
 
         setTodayStats({
           totalLitres,
-          totalPieces,
           totalVentes,
           totalTransactions,
         });
@@ -181,18 +175,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon green">
-            <FaCoins />
-          </div>
-          <div className="stat-content">
-            <p className="stat-label">Pièces de 50F</p>
-            <p className="stat-value">{todayStats.totalPieces}</p>
-            <span className="stat-change positive">
-              <FaArrowUp /> +8%
-            </span>
-          </div>
-        </div>
+        {/* Carte "Pièces de 50F" supprimée */}
 
         <div className="stat-card">
           <div className="stat-icon orange">

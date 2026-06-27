@@ -4,7 +4,6 @@ import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOf
 import { fr } from 'date-fns/locale';
 import {
   FaCalendar,
-  FaCoins,
   FaTint,
   FaMoneyBillWave,
   FaReceipt,
@@ -12,23 +11,19 @@ import {
   FaArrowRight,
   FaSearch,
 } from 'react-icons/fa';
-import './Historique.css'; // suppose le même CSS que DailySales ou spécifique
+import './Historique.css';
 
 const Historique = () => {
-  // État des transactions et chargement
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filtres
-  const [filterType, setFilterType] = useState('day'); // 'day', 'week', 'month', 'year'
+  const [filterType, setFilterType] = useState('day');
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  // Pagination
   const [page, setPage] = useState(1);
-  const limit = 10; // nombre de lignes par page
+  const limit = 10;
 
-  // Récupération des données
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
@@ -56,7 +51,6 @@ const Historique = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Détermination de l'intervalle de dates selon le filtre
   const getDateInterval = () => {
     if (!selectedDate) return null;
     const baseDate = parseISO(selectedDate);
@@ -75,54 +69,46 @@ const Historique = () => {
     }
   };
 
-  // Filtrage des transactions selon l'intervalle
   const filteredTransactions = (() => {
     if (!Array.isArray(transactions)) return [];
     const interval = getDateInterval();
     if (!interval) return [];
 
     return transactions.filter((t) => {
-      // La date peut être un champ 'date' ou 'createdAt'
       const dateStr = t.date || t.createdAt;
       if (!dateStr) return false;
       try {
         const date = parseISO(dateStr);
         return isWithinInterval(date, interval);
       } catch {
-        // Si la date est invalide, on ignore la transaction
         return false;
       }
     });
   })();
 
-  // Tri : par date puis heure (si disponible)
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
     const dateA = a.date || a.createdAt || '';
     const dateB = b.date || b.createdAt || '';
     if (dateA < dateB) return -1;
     if (dateA > dateB) return 1;
-    // Si même date, comparer les heures (si existent)
     const heureA = a.heure || '';
     const heureB = b.heure || '';
     return heureA.localeCompare(heureB);
   });
 
-  // Calcul des statistiques à partir du volume
+  // Calcul des statistiques à partir du volume (sans pièces)
   const totalLitres = sortedTransactions.reduce(
     (acc, t) => acc + (t.volume ?? t.litres ?? 0),
     0
   );
-  const totalPieces = totalLitres; // 1 litre = 1 pièce
-  const totalVentes = totalLitres * 50; // 1 litre = 50 FCFA
+  const totalVentes = totalLitres * 50;
   const nbTransactions = sortedTransactions.length;
   const moyenne = nbTransactions > 0 ? Math.round(totalVentes / nbTransactions) : 0;
 
-  // Pagination
   const totalPages = Math.max(1, Math.ceil(nbTransactions / limit));
   const start = (page - 1) * limit;
   const currentTransactions = sortedTransactions.slice(start, start + limit);
 
-  // Gestion du changement de filtre
   const handleFilterChange = (type) => {
     setFilterType(type);
     setPage(1);
@@ -133,7 +119,6 @@ const Historique = () => {
     setPage(1);
   };
 
-  // Formatage de l'affichage de la période
   const getPeriodLabel = () => {
     if (!selectedDate) return '';
     const baseDate = parseISO(selectedDate);
@@ -226,7 +211,7 @@ const Historique = () => {
         </div>
       </div>
 
-      {/* Cartes résumé */}
+      {/* Cartes résumé - Pièces supprimée */}
       <div className="summary-grid">
         <div className="summary-card">
           <div className="summary-icon blue"><FaReceipt /></div>
@@ -235,13 +220,7 @@ const Historique = () => {
             <p className="summary-value">{nbTransactions}</p>
           </div>
         </div>
-        <div className="summary-card">
-          <div className="summary-icon green"><FaCoins /></div>
-          <div>
-            <p className="summary-label">Pièces de 50F</p>
-            <p className="summary-value">{totalPieces}</p>
-          </div>
-        </div>
+        {/* Carte Pièces de 50F supprimée */}
         <div className="summary-card">
           <div className="summary-icon orange"><FaTint /></div>
           <div>
@@ -286,14 +265,12 @@ const Historique = () => {
                     <th>Date</th>
                     <th>Heure</th>
                     <th>Volume (L)</th>
-                    <th>Pièces (50F)</th>
                     <th>Montant</th>
                   </tr>
                 </thead>
                 <tbody>
                   {currentTransactions.map((sale) => {
                     const volume = sale.volume ?? sale.litres ?? 0;
-                    const pieces = volume;
                     const montant = volume * 50;
                     const dateStr = sale.date || sale.createdAt || '';
                     const heureStr = sale.heure || '';
@@ -302,7 +279,6 @@ const Historique = () => {
                         <td>{dateStr ? format(parseISO(dateStr), 'dd/MM/yyyy') : '--'}</td>
                         <td>{heureStr || '--'}</td>
                         <td>{volume} L</td>
-                        <td>{pieces}</td>
                         <td className="montant-cell">{montant.toLocaleString()} F</td>
                       </tr>
                     );
