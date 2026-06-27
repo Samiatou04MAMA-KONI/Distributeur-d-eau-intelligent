@@ -19,7 +19,7 @@ const Footer = () => {
             <span className="brand-name">Ghislain TAKO</span>
           </div>
           <p className="brand-description">
-            Supervision intelligente pour distributeurs d'eau connectés.
+            Supervision intelligente pour le distributeur d'eau connecté.
             Suivez vos ventes, analyses et performances en temps réel.
           </p>
           <nav className="footer-nav">

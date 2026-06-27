@@ -67,7 +67,7 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Préparation des données du graphique (évolution des ventes sur 7 jours)
+  // ✅ Correction du graphique : utilisation directe de item.total (déjà en FCFA)
   const chartData = {
     labels: weeklyStats.length > 0
       ? weeklyStats.map((item) => item.date?.slice(5) || '--')
@@ -76,7 +76,7 @@ const Dashboard = () => {
       {
         label: 'Ventes (FCFA)',
         data: weeklyStats.length > 0
-          ? weeklyStats.map((item) => (item.volume ?? item.totalLitres ?? 0) * 50)
+          ? weeklyStats.map((item) => item.total ?? 0)
           : [0, 0, 0, 0, 0, 0, 0],
         backgroundColor: '#2563eb',
         borderRadius: 6,

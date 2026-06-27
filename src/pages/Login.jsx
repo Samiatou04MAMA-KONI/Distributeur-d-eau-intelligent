@@ -68,7 +68,7 @@ const Login = ({ setIsAuthenticated }) => {
         <div className="login-brand">
           <span className="login-icon"><FaWater /></span>
           <h1 className="login-title">Ghislain Tako</h1>
-          <p className="login-subtitle">Supervision des distributeurs d’eau</p>
+          <p className="login-subtitle">Supervision du distributeur d’eau intelligent</p>
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
