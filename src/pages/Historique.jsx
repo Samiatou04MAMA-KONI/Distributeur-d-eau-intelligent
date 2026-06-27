@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import API from '../services/api';
-import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
+import { format, parseISO, isWithinInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   FaCalendar,
@@ -9,37 +9,36 @@ import {
   FaReceipt,
   FaArrowLeft,
   FaArrowRight,
-  FaSearch,
 } from 'react-icons/fa';
 import './Historique.css';
 
 const Historique = () => {
-  const [transactions, setTransactions] = useState([]);
+  // États des filtres
+  const [filterType, setFilterType] = useState('jour');
+  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [selectedWeek, setSelectedWeek] = useState(format(new Date(), 'yyyy-\'W\'ww'));
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [selectedYear, setSelectedYear] = useState(format(new Date(), 'yyyy'));
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const limit = 6;
+
+  // États pour les données
+  const [ventes, setVentes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [filterType, setFilterType] = useState('day');
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-
-  const [page, setPage] = useState(1);
-  const limit = 10;
-
+  // Chargement des transactions
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
         const response = await API.get('/transactions');
-        console.log('📊 Historique - transactions reçues:', response.data);
-
-        if (Array.isArray(response.data)) {
-          setTransactions(response.data);
-        } else {
-          console.warn('La réponse n\'est pas un tableau, initialisation à []');
-          setTransactions([]);
-        }
+        setVentes(response.data);
         setError(null);
       } catch (err) {
-        console.error('❌ Erreur chargement historique:', err);
-        setError('Impossible de charger l\'historique des transactions.');
+        console.error('Erreur chargement transactions:', err);
+        setError('Impossible de charger les transactions.');
       } finally {
         setLoading(false);
       }
@@ -47,69 +46,65 @@ const Historique = () => {
 
     fetchTransactions();
     const interval = setInterval(fetchTransactions, 30000);
-
     return () => clearInterval(interval);
   }, []);
 
-  const getDateInterval = () => {
-    if (!selectedDate) return null;
-    const baseDate = parseISO(selectedDate);
-
-    switch (filterType) {
-      case 'day':
-        return { start: startOfDay(baseDate), end: endOfDay(baseDate) };
-      case 'week':
-        return { start: startOfWeek(baseDate, { weekStartsOn: 1 }), end: endOfWeek(baseDate, { weekStartsOn: 1 }) };
-      case 'month':
-        return { start: startOfMonth(baseDate), end: endOfMonth(baseDate) };
-      case 'year':
-        return { start: startOfYear(baseDate), end: endOfYear(baseDate) };
-      default:
-        return null;
-    }
-  };
-
-  const filteredTransactions = (() => {
-    if (!Array.isArray(transactions)) return [];
-    const interval = getDateInterval();
-    if (!interval) return [];
-
-    return transactions.filter((t) => {
-      const dateStr = t.date || t.createdAt;
-      if (!dateStr) return false;
-      try {
-        const date = parseISO(dateStr);
-        return isWithinInterval(date, interval);
-      } catch {
-        return false;
-      }
+  // Fonctions de filtrage
+  const filterByDate = (sales, dateStr) => sales.filter(s => s.date === dateStr);
+  const filterByWeek = (sales, weekStr) => {
+    const [year, week] = weekStr.split('-W').map(Number);
+    const firstJan = new Date(year, 0, 1);
+    const daysOffset = (firstJan.getDay() + 6) % 7;
+    const firstMonday = new Date(firstJan);
+    firstMonday.setDate(firstJan.getDate() - daysOffset + (week - 1) * 7);
+    const start = new Date(firstMonday);
+    const end = new Date(firstMonday);
+    end.setDate(end.getDate() + 6);
+    return sales.filter(s => {
+      const d = parseISO(s.date);
+      return isWithinInterval(d, { start, end });
     });
-  })();
+  };
+  const filterByMonth = (sales, monthStr) => sales.filter(s => s.date.startsWith(monthStr));
+  const filterByYear = (sales, yearStr) => sales.filter(s => s.date.startsWith(yearStr));
 
-  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
-    const dateA = a.date || a.createdAt || '';
-    const dateB = b.date || b.createdAt || '';
-    if (dateA < dateB) return -1;
-    if (dateA > dateB) return 1;
-    const heureA = a.heure || '';
-    const heureB = b.heure || '';
-    return heureA.localeCompare(heureB);
-  });
+  // Filtrage principal
+ const filteredSales = useMemo(() => {
+  let result;
+  switch (filterType) {
+    case 'jour':
+      result = filterByDate(ventes, selectedDate);
+      break;
+    case 'semaine':
+      result = filterByWeek(ventes, selectedWeek);
+      break;
+    case 'mois':
+      result = filterByMonth(ventes, selectedMonth);
+      break;
+    case 'annee':
+      result = filterByYear(ventes, selectedYear);
+      break;
+    default:
+      result = ventes;
+  }
+  result.sort((a, b) => b.date.localeCompare(a.date));
+  return result;
+}, [filterType, selectedDate, selectedWeek, selectedMonth, selectedYear, ventes]);
 
-  // Calcul des statistiques à partir du volume (sans pièces)
-  const totalLitres = sortedTransactions.reduce(
-    (acc, t) => acc + (t.volume ?? t.litres ?? 0),
-    0
-  );
-  const totalVentes = totalLitres * 50;
-  const nbTransactions = sortedTransactions.length;
+  // Statistiques : uniquement à partir du volume
+  const totalVolume = filteredSales.reduce((acc, s) => acc + (s.volume || 0), 0);
+  const totalVentes = totalVolume * 50;          // 1L = 50 FCFA
+  const nbTransactions = filteredSales.length;
   const moyenne = nbTransactions > 0 ? Math.round(totalVentes / nbTransactions) : 0;
 
+  // Pagination
   const totalPages = Math.max(1, Math.ceil(nbTransactions / limit));
-  const start = (page - 1) * limit;
-  const currentTransactions = sortedTransactions.slice(start, start + limit);
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * limit;
+  const currentSales = filteredSales.slice(startIndex, startIndex + limit);
 
-  const handleFilterChange = (type) => {
+  // Gestion des changements de filtre
+  const handleFilterTypeChange = (type) => {
     setFilterType(type);
     setPage(1);
   };
@@ -118,22 +113,41 @@ const Historique = () => {
     setSelectedDate(e.target.value);
     setPage(1);
   };
+  const handleWeekChange = (e) => {
+    setSelectedWeek(e.target.value);
+    setPage(1);
+  };
+  const handleMonthChange = (e) => {
+    setSelectedMonth(e.target.value);
+    setPage(1);
+  };
+  const handleYearChange = (e) => {
+    setSelectedYear(e.target.value);
+    setPage(1);
+  };
 
-  const getPeriodLabel = () => {
-    if (!selectedDate) return '';
-    const baseDate = parseISO(selectedDate);
+  // Pagination - génération des numéros de pages
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
+
+  // Affichage du libellé du filtre
+  const renderFilterLabel = () => {
     switch (filterType) {
-      case 'day':
-        return format(baseDate, 'EEEE d MMMM yyyy', { locale: fr });
-      case 'week': {
-        const start = startOfWeek(baseDate, { weekStartsOn: 1 });
-        const end = endOfWeek(baseDate, { weekStartsOn: 1 });
-        return `Semaine du ${format(start, 'd MMM', { locale: fr })} au ${format(end, 'd MMM yyyy', { locale: fr })}`;
-      }
-      case 'month':
-        return format(baseDate, 'MMMM yyyy', { locale: fr });
-      case 'year':
-        return format(baseDate, 'yyyy', { locale: fr });
+      case 'jour':
+        return format(parseISO(selectedDate), 'EEEE d MMMM yyyy', { locale: fr });
+      case 'semaine':
+        return `Semaine ${selectedWeek.split('-W')[1]} ${selectedWeek.split('-W')[0]}`;
+      case 'mois':
+        return format(parseISO(selectedMonth + '-01'), 'MMMM yyyy', { locale: fr });
+      case 'annee':
+        return `Année ${selectedYear}`;
       default:
         return '';
     }
@@ -141,20 +155,20 @@ const Historique = () => {
 
   if (loading) {
     return (
-      <div className="historique-container">
-        <div className="historique-header">
-          <h1 className="historique-title">Historique des ventes</h1>
+      <div className="history-container">
+        <div className="history-header">
+          <h1 className="history-title">Historique des ventes</h1>
         </div>
-        <div className="loading-state">Chargement...</div>
+        <div className="loading-state">Chargement des ventes...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="historique-container">
-        <div className="historique-header">
-          <h1 className="historique-title">Historique des ventes</h1>
+      <div className="history-container">
+        <div className="history-header">
+          <h1 className="history-title">Historique des ventes</h1>
         </div>
         <div className="error-state">{error}</div>
       </div>
@@ -162,57 +176,87 @@ const Historique = () => {
   }
 
   return (
-    <div className="historique-container">
+    <div className="history-container">
       {/* En-tête */}
-      <div className="historique-header">
+      <div className="history-header">
         <div>
-          <h1 className="historique-title">Historique des ventes</h1>
-          <p className="historique-subtitle">
+          <h1 className="history-title">Historique des ventes</h1>
+          <p className="history-subtitle">
             <FaCalendar className="icon-primary" />
-            {getPeriodLabel()}
+            {renderFilterLabel() || 'Toutes les ventes'}
           </p>
         </div>
+      </div>
+
+      {/* Filtres */}
+      <div className="filter-bar">
+        <div className="filter-type-group">
+          <button
+            className={`filter-type-btn ${filterType === 'jour' ? 'active' : ''}`}
+            onClick={() => handleFilterTypeChange('jour')}
+          >
+            Jour
+          </button>
+          <button
+            className={`filter-type-btn ${filterType === 'semaine' ? 'active' : ''}`}
+            onClick={() => handleFilterTypeChange('semaine')}
+          >
+            Semaine
+          </button>
+          <button
+            className={`filter-type-btn ${filterType === 'mois' ? 'active' : ''}`}
+            onClick={() => handleFilterTypeChange('mois')}
+          >
+            Mois
+          </button>
+          <button
+            className={`filter-type-btn ${filterType === 'annee' ? 'active' : ''}`}
+            onClick={() => handleFilterTypeChange('annee')}
+          >
+            Année
+          </button>
+        </div>
         <div className="filter-controls">
-          <div className="filter-buttons">
-            <button
-              className={`filter-btn ${filterType === 'day' ? 'active' : ''}`}
-              onClick={() => handleFilterChange('day')}
-            >
-              Jour
-            </button>
-            <button
-              className={`filter-btn ${filterType === 'week' ? 'active' : ''}`}
-              onClick={() => handleFilterChange('week')}
-            >
-              Semaine
-            </button>
-            <button
-              className={`filter-btn ${filterType === 'month' ? 'active' : ''}`}
-              onClick={() => handleFilterChange('month')}
-            >
-              Mois
-            </button>
-            <button
-              className={`filter-btn ${filterType === 'year' ? 'active' : ''}`}
-              onClick={() => handleFilterChange('year')}
-            >
-              Année
-            </button>
-          </div>
-          <div className="date-picker-wrapper">
-            <FaSearch className="search-icon" />
+          {filterType === 'jour' && (
             <input
               type="date"
               value={selectedDate}
               onChange={handleDateChange}
-              className="date-picker-input"
+              className="filter-input"
             />
-          </div>
+          )}
+          {filterType === 'semaine' && (
+            <input
+              type="week"
+              value={selectedWeek}
+              onChange={handleWeekChange}
+              className="filter-input"
+            />
+          )}
+          {filterType === 'mois' && (
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={handleMonthChange}
+              className="filter-input"
+            />
+          )}
+          {filterType === 'annee' && (
+            <input
+              type="number"
+              value={selectedYear}
+              onChange={handleYearChange}
+              className="filter-input year-input"
+              min="2020"
+              max="2030"
+              step="1"
+            />
+          )}
         </div>
       </div>
 
-      {/* Cartes résumé - Pièces supprimée */}
-      <div className="summary-grid">
+      {/* Cartes résumé : Transactions, Volume distribué, Montant total, Moyenne */}
+      <div className="summary-cards">
         <div className="summary-card">
           <div className="summary-icon blue"><FaReceipt /></div>
           <div>
@@ -220,12 +264,11 @@ const Historique = () => {
             <p className="summary-value">{nbTransactions}</p>
           </div>
         </div>
-        {/* Carte Pièces de 50F supprimée */}
         <div className="summary-card">
           <div className="summary-icon orange"><FaTint /></div>
           <div>
-            <p className="summary-label">Litres distribués</p>
-            <p className="summary-value">{totalLitres} L</p>
+            <p className="summary-label">Volume distribué</p>
+            <p className="summary-value">{totalVolume} L</p>
           </div>
         </div>
         <div className="summary-card">
@@ -247,37 +290,35 @@ const Historique = () => {
       {/* Tableau */}
       <div className="table-wrapper">
         <div className="table-header">
-          <span className="table-title"><FaReceipt /> Détail des transactions</span>
+          <span className="table-title">
+            <FaReceipt /> Détail des transactions
+          </span>
           {nbTransactions > 0 && (
             <span className="table-count">{nbTransactions} transaction(s)</span>
           )}
         </div>
         {nbTransactions === 0 ? (
           <div className="empty-state">
-            <p>Aucune vente enregistrée pour cette période.</p>
+            <p>Aucune vente trouvée pour cette période.</p>
           </div>
         ) : (
           <>
             <div className="table-scroll">
-              <table className="historique-table">
+              <table className="sales-table">
                 <thead>
                   <tr>
                     <th>Date</th>
-                    <th>Heure</th>
                     <th>Volume (L)</th>
                     <th>Montant</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {currentTransactions.map((sale) => {
-                    const volume = sale.volume ?? sale.litres ?? 0;
+                  {currentSales.map((sale) => {
+                    const volume = sale.volume || 0;
                     const montant = volume * 50;
-                    const dateStr = sale.date || sale.createdAt || '';
-                    const heureStr = sale.heure || '';
                     return (
-                      <tr key={sale._id || sale.id}>
-                        <td>{dateStr ? format(parseISO(dateStr), 'dd/MM/yyyy') : '--'}</td>
-                        <td>{heureStr || '--'}</td>
+                      <tr key={sale._id}>
+                        <td>{format(parseISO(sale.date), 'dd/MM/yyyy')}</td>
                         <td>{volume} L</td>
                         <td className="montant-cell">{montant.toLocaleString()} F</td>
                       </tr>
@@ -286,23 +327,49 @@ const Historique = () => {
                 </tbody>
               </table>
             </div>
+            {/* Pagination */}
             {totalPages > 1 && (
               <div className="pagination-footer">
-                <span className="page-info">Page {page} sur {totalPages}</span>
+                <span className="page-info">
+                  Page {currentPage} sur {totalPages} ({nbTransactions} résultats)
+                </span>
                 <div className="pagination-buttons">
                   <button
+                    onClick={() => setPage(1)}
+                    disabled={currentPage === 1}
+                    className="pagination-btn"
+                  >
+                    <FaArrowLeft /> Premier
+                  </button>
+                  <button
                     onClick={() => setPage(p => Math.max(p - 1, 1))}
-                    disabled={page === 1}
+                    disabled={currentPage === 1}
                     className="pagination-btn"
                   >
                     <FaArrowLeft /> Précédent
                   </button>
+                  {getPageNumbers().map(num => (
+                    <button
+                      key={num}
+                      onClick={() => setPage(num)}
+                      className={`pagination-btn page-number ${num === currentPage ? 'active' : ''}`}
+                    >
+                      {num}
+                    </button>
+                  ))}
                   <button
                     onClick={() => setPage(p => Math.min(p + 1, totalPages))}
-                    disabled={page === totalPages}
+                    disabled={currentPage === totalPages}
                     className="pagination-btn"
                   >
                     Suivant <FaArrowRight />
+                  </button>
+                  <button
+                    onClick={() => setPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="pagination-btn"
+                  >
+                    Dernier <FaArrowRight />
                   </button>
                 </div>
               </div>
