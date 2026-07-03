@@ -26,7 +26,6 @@ const DailySales = () => {
     const fetchTransactions = async () => {
       try {
         const response = await API.get('/transactions');
-        console.log('📊 Transactions response:', response.data);
 
         if (Array.isArray(response.data)) {
           setAllVentes(response.data);
