@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import API from '../services/api';
-import { format, parseISO, isWithinInterval } from 'date-fns';
+import { format, parseISO, isWithinInterval, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   FaCalendar,
@@ -318,7 +318,13 @@ const Historique = () => {
                     const montant = volume * 50;
                     return (
                       <tr key={sale._id}>
-                        <td>{format(parseISO(sale.date), 'dd/MM/yyyy')}</td>
+                        {(() => {
+                          const d = parseISO(sale.date);
+                          if (!isValid(d)) {
+                            return "Date invalide";
+                          }
+                          return format(d, "dd/MM/yyyy");
+                        })()}
                         <td>{volume} L</td>
                         <td className="montant-cell">{montant.toLocaleString()} F</td>
                       </tr>
