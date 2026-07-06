@@ -319,7 +319,7 @@ const Historique = () => {
                     return (
                       <tr key={sale._id}>
                         {(() => {
-                          const d = parseISO(sale.date);
+                          const d = new Date(sale.date);
                           if (!isValid(d)) {
                             return "Date invalide";
                           }
