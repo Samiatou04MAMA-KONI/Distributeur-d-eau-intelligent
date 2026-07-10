@@ -87,7 +87,7 @@ const Historique = () => {
     default:
       result = ventes;
   }
-  result.sort((a, b) => b.date.localeCompare(a.date));
+  result.sort((a, b) => new Date(b.date) - new Date(a.date));
   return result;
 }, [filterType, selectedDate, selectedWeek, selectedMonth, selectedYear, ventes]);
 
@@ -318,16 +318,22 @@ const Historique = () => {
                     const montant = volume * 25; // 1 litre = 25 FCFA
                     return (
                       <tr key={sale._id}>
-                        {(() => {
+                        <td>
+                          {(() => {
                           const d = new Date(sale.date);
                           if (!isValid(d)) {
-                            return "Date invalide";
+                          return "Date invalide";
                           }
                           return format(d, "dd/MM/yyyy");
-                        })()}
-                        <td>{volume} L</td>
-                        <td className="montant-cell">{montant.toLocaleString()} F</td>
-                      </tr>
+                          })()}
+                        </td>
+
+                      <td>{volume} L</td>
+
+  <td className="montant-cell">
+    {montant.toLocaleString()} F
+  </td>
+</tr>
                     );
                   })}
                 </tbody>
