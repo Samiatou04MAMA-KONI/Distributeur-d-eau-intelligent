@@ -58,7 +58,7 @@ const DailySales = () => {
     (acc, sale) => acc + (sale.volume ?? 0),
     0
   );
-  const totalVentes = totalLitres * 50;     // 1 litre = 50 FCFA
+  const totalVentes = totalLitres * 25;     // 1 litre = 25 FCFA
   const nbTransactions = ventesFiltrees.length;
   const moyenne = nbTransactions > 0
     ? Math.round(totalVentes / nbTransactions)
@@ -122,7 +122,7 @@ const DailySales = () => {
         </div>
       </div>
 
-      {/* Cartes résumé - Pièces de 50F supprimée */}
+      {/* Cartes résumé - Pièces de 25F supprimée */}
       <div className="summary-grid">
         <div className="summary-card">
           <div className="summary-icon blue"><FaReceipt /></div>
@@ -180,7 +180,7 @@ const DailySales = () => {
                 <tbody>
                   {currentSales.map((sale) => {
                     const volume = sale.volume ?? 0;
-                    const montant = volume * 50;
+                    const montant = volume * 25; // 1 litre = 25 FCFA
                     return (
                       <tr key={sale._id || sale.id}>
                         <td>{volume} L</td>

@@ -42,7 +42,7 @@ const Dashboard = () => {
         // Récupération des valeurs brutes (volume et nombre de transactions)
         const totalLitres = data.today?.totalLitres ?? data.today?.volume ?? 0;
         const totalTransactions = data.today?.totalTransactions ?? data.today?.transactions ?? 0;
-        const totalVentes = totalLitres * 50; // 1 litre = 50 FCFA
+        const totalVentes = totalLitres * 25; // 1 litre = 25 FCFA
 
         setTodayStats({
           totalLitres,
@@ -175,7 +175,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Carte "Pièces de 50F" supprimée */}
+        {/* Carte "Pièces de 25F" supprimée */}
 
         <div className="stat-card">
           <div className="stat-icon orange">

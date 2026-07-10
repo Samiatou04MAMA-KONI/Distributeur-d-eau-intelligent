@@ -93,7 +93,7 @@ const Historique = () => {
 
   // Statistiques : uniquement à partir du volume
   const totalVolume = filteredSales.reduce((acc, s) => acc + (s.volume || 0), 0);
-  const totalVentes = totalVolume * 50;          // 1L = 50 FCFA
+  const totalVentes = totalVolume * 25;          // 1L = 25 FCFA
   const nbTransactions = filteredSales.length;
   const moyenne = nbTransactions > 0 ? Math.round(totalVentes / nbTransactions) : 0;
 
@@ -315,7 +315,7 @@ const Historique = () => {
                 <tbody>
                   {currentSales.map((sale) => {
                     const volume = sale.volume || 0;
-                    const montant = volume * 50;
+                    const montant = volume * 25; // 1 litre = 25 FCFA
                     return (
                       <tr key={sale._id}>
                         {(() => {
